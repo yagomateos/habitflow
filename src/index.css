@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './styles/premium-animations.css';
+
 /* Habit Tracker Design System - Modern gradients and vibrant colors */
 
 @layer base {

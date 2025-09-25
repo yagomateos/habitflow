@@ -148,6 +148,15 @@ export const useHabits = () => {
     return habit.completedDates.includes(today);
   };
 
+  const reorderHabits = (startIndex: number, endIndex: number) => {
+    setHabits(prev => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(startIndex, 1);
+      result.splice(endIndex, 0, removed);
+      return result;
+    });
+  };
+
   return {
     habits,
     loading,
@@ -155,6 +164,7 @@ export const useHabits = () => {
     updateHabit,
     deleteHabit,
     toggleHabitCompletion,
+    reorderHabits,
     getHabitStats,
     getHabitsByCategory,
     isHabitCompletedToday

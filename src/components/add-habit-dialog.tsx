@@ -283,12 +283,21 @@ export const AddHabitDialog = ({
         </DialogTrigger>
       )}
       
-      <DialogContent className="sm:max-w-[600px] glass-card animate-scale-in">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
+      <DialogContent 
+        className="w-[95vw] max-w-[600px] max-h-[85vh] glass-card animate-scale-in flex flex-col"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          margin: 0
+        }}
+      >
+        <DialogHeader className="flex-shrink-0 pb-4 border-b border-border">
+          <DialogTitle className="text-lg sm:text-xl font-semibold">
             {editingHabit ? 'Editar Hábito' : 'Crear Nuevo Hábito'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm sm:text-base">
             {editingHabit
               ? 'Modifica los detalles de tu hábito'
               : 'Elige un template o crea tu hábito personalizado'
@@ -296,10 +305,11 @@ export const AddHabitDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          {/* Tab Navigation - Only show for new habits */}
-          {!editingHabit && (
-            <TabsList className="grid w-full grid-cols-2 bg-muted/30">
+        <div className="flex-1 overflow-y-auto mt-4 pr-2 modal-scroll">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+            {/* Tab Navigation - Only show for new habits */}
+            {!editingHabit && (
+              <TabsList className="grid w-full grid-cols-2 bg-muted/30 flex-shrink-0">
               <TabsTrigger value="templates" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Templates
@@ -311,33 +321,33 @@ export const AddHabitDialog = ({
             </TabsList>
           )}
 
-          {/* Templates Tab */}
-          <TabsContent value="templates" className="space-y-4">
+            {/* Templates Tab */}
+            <TabsContent value="templates" className="space-y-4 mt-4">
             {/* Popular Templates */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Star className="h-4 w-4 text-yellow-500" />
                 <Label className="text-sm font-medium">Populares</Label>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {HABIT_TEMPLATES.filter(t => t.popular).map((template) => (
                   <button
                     key={template.id}
                     onClick={() => handleTemplateSelect(template)}
                     className={cn(
-                      "p-4 rounded-lg border text-left transition-all hover:scale-[1.02] hover:shadow-md",
+                      "p-3 sm:p-4 rounded-lg border text-left transition-all hover:scale-[1.02] hover:shadow-md",
                       "bg-background/50 backdrop-blur-sm border-border hover:border-primary/30"
                     )}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="text-xl">{template.icon}</div>
+                      <div className="text-lg sm:text-xl flex-shrink-0">{template.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm mb-1">{template.name}</div>
-                        <div className="text-xs text-muted-foreground line-clamp-2">
+                        <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
                           {template.description}
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                          <Badge variant="outline" className="text-xs w-fit">
                             {CATEGORY_CONFIG[template.category].icon} {CATEGORY_CONFIG[template.category].name}
                           </Badge>
                           <div className="text-xs text-muted-foreground">
@@ -370,20 +380,20 @@ export const AddHabitDialog = ({
                         {categoryConfig.name}
                       </Label>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       {categoryTemplates.map((template) => (
                         <button
                           key={template.id}
                           onClick={() => handleTemplateSelect(template)}
                           className={cn(
-                            "p-3 rounded-md border text-left transition-all hover:scale-[1.01]",
+                            "p-2 sm:p-3 rounded-md border text-left transition-all hover:scale-[1.01]",
                             "bg-background/30 border-border/50 hover:border-primary/30 hover:bg-background/50"
                           )}
                         >
                           <div className="flex items-start gap-2">
-                            <div className="text-sm">{template.icon}</div>
+                            <div className="text-sm flex-shrink-0">{template.icon}</div>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-xs mb-1">{template.name}</div>
+                              <div className="font-medium text-xs mb-1 line-clamp-1">{template.name}</div>
                               <div className="text-xs text-muted-foreground">
                                 {template.frequency === 'daily' ? 'Diario' : `${template.target}x/semana`}
                               </div>
@@ -398,8 +408,8 @@ export const AddHabitDialog = ({
             </div>
           </TabsContent>
 
-          {/* Custom Form Tab */}
-          <TabsContent value="custom" className="space-y-4">
+            {/* Custom Form Tab */}
+            <TabsContent value="custom" className="space-y-4 mt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name */}
               <div>
@@ -437,16 +447,16 @@ export const AddHabitDialog = ({
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, category: key as CategoryType }))}
                       className={cn(
-                        "p-3 rounded-lg border-2 transition-all text-sm font-medium",
+                        "p-2 sm:p-3 rounded-lg border-2 transition-all text-xs sm:text-sm font-medium",
                         "hover:scale-105 active:scale-95",
                         formData.category === key
-                          ? `border-${config.color} bg-${config.color}/10 text-${config.color}`
+                          ? "border-primary bg-primary/10 text-primary"
                           : "border-border hover:border-muted-foreground/30"
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{config.icon}</span>
-                        <span>{config.name}</span>
+                      <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+                        <span className="text-base sm:text-lg">{config.icon}</span>
+                        <span className="text-center">{config.name}</span>
                       </div>
                     </button>
                   ))}
@@ -518,8 +528,9 @@ export const AddHabitDialog = ({
                 </Button>
               </div>
             </form>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );

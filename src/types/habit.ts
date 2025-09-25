@@ -16,8 +16,10 @@ export interface Habit {
 export interface HabitStats {
   totalHabits: number;
   completedToday: number;
-  currentStreaks: number;
-  weeklyCompletion: number;
+  completionRate: number;
+  longestStreak: number;
+  currentStreak: number;
+  weeklyProgress: number;
   monthlyCompletion: number;
 }
 

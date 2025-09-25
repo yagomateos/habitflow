@@ -215,23 +215,23 @@ export const AchievementNotification = ({
   if (!shouldRender) return null;
 
   return createPortal(
-    <div className="fixed top-4 right-4 z-[9998] animate-in slide-in-from-right-full duration-500">
+    <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 sm:top-4 z-[9998] animate-in slide-in-from-top sm:slide-in-from-right-full duration-500">
       <div className={cn(
-        "bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-4 rounded-lg shadow-2xl",
-        "border border-yellow-300 backdrop-blur-sm",
+        "bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-3 sm:p-4 rounded-lg shadow-2xl",
+        "border border-yellow-300 backdrop-blur-sm max-w-sm mx-auto sm:mx-0",
         "transform transition-all duration-500 ease-out",
-        isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
+        isVisible ? "translate-x-0 translate-y-0 opacity-100" : "translate-y-[-100%] sm:translate-y-0 sm:translate-x-full opacity-0"
       )}>
-        <div className="flex items-start gap-3">
-          <div className="text-2xl animate-bounce">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <div className="text-xl sm:text-2xl animate-bounce flex-shrink-0">
             {icon}
           </div>
 
-          <div className="flex-1">
-            <div className="font-bold text-lg mb-1">
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm sm:text-lg mb-1">
               {title}
             </div>
-            <div className="text-sm opacity-90">
+            <div className="text-xs sm:text-sm opacity-90 line-clamp-2">
               {description}
             </div>
           </div>
@@ -241,7 +241,7 @@ export const AchievementNotification = ({
               setShouldRender(false);
               onClose?.();
             }}
-            className="text-white/70 hover:text-white transition-colors"
+            className="text-white/70 hover:text-white transition-colors flex-shrink-0 text-sm sm:text-base"
           >
             ✕
           </button>

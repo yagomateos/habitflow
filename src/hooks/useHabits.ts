@@ -1,31 +1,40 @@
 import { useState, useEffect } from 'react';
 import { Habit, HabitStats } from '@/types/habit';
 
-const STORAGE_KEY = 'habits-app-data';
-
-export const useHabits = () => {
+export const useHabits = (userId?: string | null) => {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load habits from localStorage on mount
+  const getStorageKey = (userId: string) => `habitflow_habits_${userId}`;
+
+  // Load habits from localStorage on mount or when userId changes
   useEffect(() => {
-    const savedHabits = localStorage.getItem(STORAGE_KEY);
+    if (!userId) {
+      setHabits([]);
+      setLoading(false);
+      return;
+    }
+
+    const savedHabits = localStorage.getItem(getStorageKey(userId));
     if (savedHabits) {
       try {
         setHabits(JSON.parse(savedHabits));
       } catch (error) {
         console.error('Error loading habits:', error);
+        setHabits([]);
       }
+    } else {
+      setHabits([]);
     }
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   // Save habits to localStorage whenever habits change
   useEffect(() => {
-    if (!loading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+    if (!loading && userId) {
+      localStorage.setItem(getStorageKey(userId), JSON.stringify(habits));
     }
-  }, [habits, loading]);
+  }, [habits, loading, userId]);
 
   const addHabit = (habitData: Omit<Habit, 'id' | 'createdAt' | 'streak' | 'completedDates'>) => {
     const newHabit: Habit = {
@@ -95,9 +104,26 @@ export const useHabits = () => {
 
   const getHabitStats = (): HabitStats => {
     const today = new Date().toISOString().split('T')[0];
+    const totalHabits = habits.length;
     const completedToday = habits.filter(h => h.completedDates.includes(today)).length;
     
-    // Weekly completion
+    // Completion rate (overall)
+    const totalPossibleCompletions = habits.reduce((acc, habit) => {
+      const daysActive = Math.max(1, Math.floor((Date.now() - new Date(habit.createdAt).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      return acc + daysActive;
+    }, 0);
+    
+    const totalActualCompletions = habits.reduce((acc, habit) => {
+      return acc + habit.completedDates.length;
+    }, 0);
+    
+    const completionRate = totalPossibleCompletions > 0 ? (totalActualCompletions / totalPossibleCompletions) * 100 : 0;
+    
+    // Streaks
+    const longestStreak = habits.length > 0 ? Math.max(...habits.map(h => h.streak)) : 0;
+    const currentStreak = habits.length > 0 ? Math.max(...habits.map(h => h.streak)) : 0;
+    
+    // Weekly progress
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -111,7 +137,7 @@ export const useHabits = () => {
       return acc + weekDates.filter(date => habit.completedDates.includes(date)).length;
     }, 0);
     
-    const weeklyCompletion = weeklyTotal > 0 ? (weeklyCompleted / weeklyTotal) * 100 : 0;
+    const weeklyProgress = weeklyTotal > 0 ? (weeklyCompleted / weeklyTotal) * 100 : 0;
 
     // Monthly completion
     const monthStart = new Date();
@@ -131,10 +157,12 @@ export const useHabits = () => {
     const monthlyCompletion = monthlyTotal > 0 ? (monthlyCompleted / monthlyTotal) * 100 : 0;
 
     return {
-      totalHabits: habits.length,
+      totalHabits,
       completedToday,
-      currentStreaks: habits.reduce((acc, h) => acc + h.streak, 0),
-      weeklyCompletion: Math.round(weeklyCompletion),
+      completionRate: Math.round(completionRate),
+      longestStreak,
+      currentStreak,
+      weeklyProgress: Math.round(weeklyProgress),
       monthlyCompletion: Math.round(monthlyCompletion)
     };
   };

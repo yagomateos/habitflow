@@ -130,46 +130,56 @@ export const EnhancedHabitCard = ({
     <Card
       ref={cardRef}
       className={cn(
-        "group relative overflow-hidden transition-all duration-500 ease-out",
-        "border-0 shadow-sm hover:shadow-lg backdrop-blur-sm",
-        "bg-gradient-to-br from-background/80 to-background/40",
-        "hover:scale-[1.02] hover:-translate-y-1",
-        isCompleted && "ring-2 ring-emerald-500/20 bg-gradient-to-br from-emerald-50/50 to-background/40",
-        isAnimating && "animate-pulse",
-        "dark:from-background/60 dark:to-background/20"
+        "group relative overflow-hidden transition-all duration-500 ease-out glass-card shadow-premium floating-card",
+        "rounded-2xl border-l-4 border-l-transparent",
+        "hover:shadow-premium-lg hover:scale-[1.03] hover:-translate-y-2",
+        categoryConfig.color === 'health' && "hover:border-l-emerald-500 hover:shadow-emerald-500/20",
+        categoryConfig.color === 'fitness' && "hover:border-l-blue-500 hover:shadow-blue-500/20", 
+        categoryConfig.color === 'productivity' && "hover:border-l-violet-500 hover:shadow-violet-500/20",
+        categoryConfig.color === 'personal' && "hover:border-l-pink-500 hover:shadow-pink-500/20",
+        isCompleted && "ring-2 ring-emerald-500/30 shadow-emerald-500/20 scale-95 opacity-90",
+        isAnimating && "animate-glow-pulse"
       )}
     >
-      {/* Subtle gradient overlay */}
+      {/* Premium gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/5 pointer-events-none"></div>
+      
+      {/* Category-specific hover overlay */}
       <div className={cn(
-        "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-        "bg-gradient-to-br from-transparent via-primary/5 to-primary/10"
+        "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+        categoryConfig.color === 'health' && "bg-gradient-to-br from-emerald-500/10 via-transparent to-emerald-500/5",
+        categoryConfig.color === 'fitness' && "bg-gradient-to-br from-blue-500/10 via-transparent to-blue-500/5",
+        categoryConfig.color === 'productivity' && "bg-gradient-to-br from-violet-500/10 via-transparent to-violet-500/5",
+        categoryConfig.color === 'personal' && "bg-gradient-to-br from-pink-500/10 via-transparent to-pink-500/5"
       )} />
 
-      {/* Confetti overlay */}
+      {/* Confetti overlay with premium effects */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-blue-400/20 animate-glow-pulse rounded-2xl"></div>
+          <div className="absolute inset-0 animate-shimmer-modern"></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <Sparkles className="h-8 w-8 text-yellow-400 animate-bounce" />
+            <Sparkles className="h-10 w-10 text-yellow-400 animate-bounce-subtle" />
           </div>
         </div>
       )}
 
-      <CardContent className="relative p-6">
+      <CardContent className="relative p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-start gap-3">
+        <div className="flex items-start justify-between mb-3 sm:mb-4">
+          <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
             {/* Category indicator */}
             <div className={cn(
-              "w-1 h-16 rounded-full opacity-60 group-hover:opacity-100 transition-all duration-300",
+              "w-1 h-12 sm:h-16 rounded-full opacity-60 group-hover:opacity-100 transition-all duration-300 flex-shrink-0",
               categoryConfig.color === 'health' && "bg-emerald-500",
               categoryConfig.color === 'fitness' && "bg-blue-500",
               categoryConfig.color === 'productivity' && "bg-violet-500",
               categoryConfig.color === 'personal' && "bg-pink-500"
             )} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h3 className={cn(
-                "font-semibold text-lg mb-1 transition-colors duration-300",
+                "font-semibold text-base sm:text-lg mb-1 transition-colors duration-300 line-clamp-2",
                 "group-hover:text-foreground/90",
                 isCompleted && "line-through text-muted-foreground"
               )}>
@@ -177,13 +187,13 @@ export const EnhancedHabitCard = ({
               </h3>
 
               {habit.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-2">
                   {habit.description}
                 </p>
               )}
 
               {/* Category badge */}
-              <div className="mt-2">
+              <div>
                 <Badge
                   variant="secondary"
                   className={cn(
@@ -196,7 +206,7 @@ export const EnhancedHabitCard = ({
                   )}
                 >
                   <span className="mr-1">{categoryConfig.icon}</span>
-                  {categoryConfig.name}
+                  <span className="hidden sm:inline">{categoryConfig.name}</span>
                 </Badge>
               </div>
             </div>
@@ -233,14 +243,14 @@ export const EnhancedHabitCard = ({
         </div>
 
         {/* Progress section */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           {/* Completion button */}
           <Button
             onClick={handleToggleComplete}
             variant={isCompleted ? "default" : "outline"}
             size="sm"
             className={cn(
-              "transition-all duration-300 hover:scale-105 min-w-[100px]",
+              "transition-all duration-300 hover:scale-105 w-full sm:min-w-[100px] sm:w-auto",
               isCompleted
                 ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
                 : "hover:border-primary hover:text-primary",
@@ -251,20 +261,20 @@ export const EnhancedHabitCard = ({
               "h-4 w-4 mr-1 transition-transform duration-300",
               isCompleted ? "scale-100" : "scale-0"
             )} />
-            {isCompleted ? "Completado" : "Marcar"}
+            <span className="text-xs sm:text-sm">{isCompleted ? "Completado" : "Marcar"}</span>
           </Button>
 
           {/* Progress ring and streak */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center sm:justify-end gap-3 sm:gap-4">
             {/* Streak indicator */}
             {habit.streak > 0 && (
               <div className="flex items-center gap-1">
                 <Flame className={cn(
-                  "h-5 w-5 transition-colors duration-300",
+                  "h-4 w-4 sm:h-5 sm:w-5 transition-colors duration-300",
                   habit.streak >= 7 ? "text-orange-500" : "text-orange-400"
                 )} />
                 <span className={cn(
-                  "font-bold text-lg transition-colors duration-300",
+                  "font-bold text-sm sm:text-lg transition-colors duration-300",
                   habit.streak >= 7 ? "text-orange-600" : "text-orange-500"
                 )}>
                   {habit.streak}
@@ -273,12 +283,12 @@ export const EnhancedHabitCard = ({
             )}
 
             {/* Weekly progress ring */}
-            <ProgressRing progress={weekProgress} size={52}>
+            <ProgressRing progress={weekProgress} size={44}>
               <div className="text-center">
-                <div className="text-sm font-bold text-foreground">
+                <div className="text-xs sm:text-sm font-bold text-foreground">
                   {completedThisWeek}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-[10px] sm:text-xs text-muted-foreground">
                   / 7
                 </div>
               </div>

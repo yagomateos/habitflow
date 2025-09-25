@@ -12,39 +12,139 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Simulamos una base de datos local con localStorage
+// Simulamos una base de datos local con localStorage con fallback para producción
 class AuthService {
   private static USERS_KEY = 'habitflow_users';
   private static SESSION_KEY = 'habitflow_session';
 
+  // In-memory fallback for production when localStorage is not available
+  private static memoryUsers: Record<string, User> = {};
+  private static memorySession: UserSession | null = null;
+  private static isInitialized = false;
+
+  // Helper method to check if localStorage is available
+  private static isLocalStorageAvailable(): boolean {
+    try {
+      const test = '__localStorage_test__';
+      localStorage.setItem(test, test);
+      localStorage.removeItem(test);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Initialize demo users for production
+  private static initializeDemoUsers(): void {
+    if (this.isInitialized) return;
+
+    this.isInitialized = true;
+
+    const demoUser: User = {
+      id: 'demo-user-1',
+      username: 'demo',
+      email: 'demo@habitflow.com',
+      firstName: 'Usuario',
+      lastName: 'Demo',
+      createdAt: new Date().toISOString(),
+      personalGoals: {
+        dailyHabits: 3,
+        weeklyGoals: [],
+        monthlyTargets: []
+      },
+      preferences: {
+        notifications: true,
+        theme: 'system',
+        reminderTime: '09:00',
+        weekStartsOn: 'monday'
+      },
+      stats: {
+        totalHabitsCreated: 0,
+        longestStreak: 0,
+        totalCompletions: 0,
+        joinDate: new Date().toISOString()
+      }
+    };
+
+    this.memoryUsers[demoUser.id] = demoUser;
+  }
+
   static getUsers(): Record<string, User> {
-    const users = localStorage.getItem(this.USERS_KEY);
-    return users ? JSON.parse(users) : {};
+    if (!this.isLocalStorageAvailable()) {
+      this.initializeDemoUsers();
+      return this.memoryUsers;
+    }
+    try {
+      const users = localStorage.getItem(this.USERS_KEY);
+      return users ? JSON.parse(users) : {};
+    } catch {
+      this.initializeDemoUsers();
+      return this.memoryUsers;
+    }
   }
 
   static saveUsers(users: Record<string, User>): void {
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+    // Always update memory storage as fallback
+    this.memoryUsers = users;
+
+    if (this.isLocalStorageAvailable()) {
+      try {
+        localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+      } catch {
+        // Use memory storage as fallback
+      }
+    }
   }
 
   static getSession(): UserSession | null {
-    const session = localStorage.getItem(this.SESSION_KEY);
-    if (!session) return null;
-    
-    const parsedSession = JSON.parse(session);
-    if (new Date(parsedSession.expiresAt) < new Date()) {
-      this.clearSession();
-      return null;
+    if (!this.isLocalStorageAvailable()) {
+      // Check if session is expired
+      if (this.memorySession && new Date(this.memorySession.expiresAt) < new Date()) {
+        this.memorySession = null;
+      }
+      return this.memorySession;
     }
-    
-    return parsedSession;
+
+    try {
+      const session = localStorage.getItem(this.SESSION_KEY);
+      if (!session) return null;
+
+      const parsedSession = JSON.parse(session);
+      if (new Date(parsedSession.expiresAt) < new Date()) {
+        this.clearSession();
+        return null;
+      }
+
+      return parsedSession;
+    } catch {
+      return this.memorySession;
+    }
   }
 
   static saveSession(session: UserSession): void {
-    localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+    // Always update memory storage as fallback
+    this.memorySession = session;
+
+    if (this.isLocalStorageAvailable()) {
+      try {
+        localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+      } catch {
+        // Use memory storage as fallback
+      }
+    }
   }
 
   static clearSession(): void {
-    localStorage.removeItem(this.SESSION_KEY);
+    // Clear memory storage
+    this.memorySession = null;
+
+    if (this.isLocalStorageAvailable()) {
+      try {
+        localStorage.removeItem(this.SESSION_KEY);
+      } catch {
+        // Memory already cleared
+      }
+    }
   }
 
   static generateId(): string {
@@ -56,13 +156,21 @@ class AuthService {
   }
 
   static async login(email: string, password: string): Promise<User | null> {
+    // Always initialize demo users first
+    this.initializeDemoUsers();
+
     const users = this.getUsers();
     const user = Object.values(users).find(u => u.email === email);
-    
+
     if (!user) return null;
-    
+
+    // Check for demo credentials
+    if (email === 'demo@habitflow.com' && password === 'demo') {
+      return user;
+    }
+
     // En una app real, aquí verificarías el password con hash
-    // Por simplicidad, asumimos que el password es correcto
+    // Por simplicidad, asumimos que el password es correcto para otros usuarios
     return user;
   }
 
@@ -111,19 +219,19 @@ class AuthService {
   static updateUser(userId: string, updates: Partial<User>): User | null {
     const users = this.getUsers();
     const user = users[userId];
-    
+
     if (!user) return null;
-    
+
     const updatedUser = { ...user, ...updates };
     users[userId] = updatedUser;
     this.saveUsers(users);
-    
+
     // Actualizar también la sesión
     const session = this.getSession();
     if (session && session.user.id === userId) {
       this.saveSession({ ...session, user: updatedUser });
     }
-    
+
     return updatedUser;
   }
 }

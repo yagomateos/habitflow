@@ -3,7 +3,6 @@ import { Eye, EyeOff, Mail, Lock, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginData } from '@/types/auth';
 
@@ -31,107 +30,94 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto glass-card">
-      <CardHeader className="space-y-2 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 rounded-full bg-primary/10">
-            <LogIn className="h-8 w-8 text-primary" />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        {/* Email Field */}
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Email
+          </Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="tu@email.com"
+              className="pl-10 h-12 border-slate-200 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500/20"
+              required
+            />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-        <CardDescription>
-          Accede a tu cuenta para continuar construyendo tus hábitos
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={formData.email}
-                onChange={handleChange}
-                className="pl-10"
-                required
-              />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                className="pl-10 pr-10"
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-1 top-1 h-8 w-8 p-0"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-          </Button>
-
-          <div className="text-center text-sm text-muted-foreground">
-            ¿No tienes cuenta?{' '}
-            <Button
+        {/* Password Field */}
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Contraseña
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="••••••••"
+              className="pl-10 pr-10 h-12 border-slate-200 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-500/20"
+              required
+            />
+            <button
               type="button"
-              variant="link"
-              className="p-0 h-auto font-normal"
-              onClick={onToggleMode}
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
             >
-              Crear cuenta
-            </Button>
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
+        </div>
+      </div>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-3 bg-muted/50 rounded-lg border">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">
-              Demo (puedes usar cualquier email):
-            </p>
-            <div className="space-y-1 text-xs">
-              <p><strong>Email:</strong> demo@habitflow.com</p>
-              <p><strong>Contraseña:</strong> cualquier texto</p>
-            </div>
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        disabled={isLoading || !formData.email || !formData.password}
+        className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+      >
+        {isLoading ? (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Iniciando sesión...
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        ) : (
+          <div className="flex items-center gap-2">
+            <LogIn className="h-4 w-4" />
+            Iniciar sesión
+          </div>
+        )}
+      </Button>
+
+      {/* Toggle Mode */}
+      <div className="text-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          ¿No tienes cuenta?{' '}
+          <button
+            type="button"
+            onClick={onToggleMode}
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+          >
+            Crear cuenta
+          </button>
+        </p>
+      </div>
+    </form>
   );
 }

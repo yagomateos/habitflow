@@ -35,7 +35,7 @@ export function UserProfile() {
     setIsEditing(false);
   };
 
-  const handlePreferenceChange = (key: string, value: any) => {
+  const handlePreferenceChange = (key: string, value: unknown) => {
     updateUser({
       preferences: {
         ...user.preferences,
@@ -44,7 +44,7 @@ export function UserProfile() {
     });
   };
 
-  const handleGoalChange = (key: string, value: any) => {
+  const handleGoalChange = (key: string, value: unknown) => {
     updateUser({
       personalGoals: {
         ...user.personalGoals,

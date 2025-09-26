@@ -15,27 +15,29 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to convert Supabase user to our User type
-function supabaseUserToUser(supabaseUser: SupabaseUser, profile?: any): User {
+function supabaseUserToUser(supabaseUser: SupabaseUser, profile?: unknown): User {
+  const userProfile = profile as Record<string, unknown> | undefined;
+
   return {
     id: supabaseUser.id,
-    username: profile?.username || supabaseUser.email?.split('@')[0] || 'user',
+    username: (userProfile?.username as string) || supabaseUser.email?.split('@')[0] || 'user',
     email: supabaseUser.email!,
-    firstName: profile?.first_name || 'Usuario',
-    lastName: profile?.last_name || 'Demo',
+    firstName: (userProfile?.first_name as string) || 'Usuario',
+    lastName: (userProfile?.last_name as string) || 'Demo',
     avatar: supabaseUser.user_metadata?.avatar_url,
     createdAt: supabaseUser.created_at!,
-    personalGoals: profile?.personal_goals || {
+    personalGoals: (userProfile?.personal_goals as User['personalGoals']) || {
       dailyHabits: 3,
       weeklyGoals: [],
       monthlyTargets: []
     },
-    preferences: profile?.preferences || {
+    preferences: (userProfile?.preferences as User['preferences']) || {
       notifications: true,
       theme: 'system',
       reminderTime: '09:00',
       weekStartsOn: 'monday'
     },
-    stats: profile?.stats || {
+    stats: (userProfile?.stats as User['stats']) || {
       totalHabitsCreated: 0,
       longestStreak: 0,
       totalCompletions: 0,

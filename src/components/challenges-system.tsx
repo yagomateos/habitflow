@@ -150,7 +150,7 @@ interface ChallengeProgress {
 }
 
 interface ChallengesSystemProps {
-  habits: any[]; // Usar la interfaz Habit real
+  habits: unknown[]; // Usar la interfaz Habit real
   className?: string;
 }
 

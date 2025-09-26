@@ -86,7 +86,7 @@ export const useHabits = (userId?: string | null) => {
     const today = new Date().toISOString().split('T')[0];
     
     let streak = 0;
-    let currentDate = new Date(today);
+    const currentDate = new Date(today);
 
     for (let i = 0; i < sortedDates.length; i++) {
       const dateStr = currentDate.toISOString().split('T')[0];

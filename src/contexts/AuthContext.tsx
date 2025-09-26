@@ -164,9 +164,9 @@ class AuthService {
 
     if (!user) return null;
 
-    // Check for demo credentials
-    if (email === 'demo@habitflow.com' && password === 'demo') {
-      return user;
+    // Special validation for demo user
+    if (email === 'demo@habitflow.com') {
+      return password === 'demo' ? user : null;
     }
 
     // En una app real, aquí verificarías el password con hash

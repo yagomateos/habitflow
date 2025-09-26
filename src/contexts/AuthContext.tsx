@@ -39,6 +39,7 @@ class AuthService {
     if (this.isInitialized) return;
 
     this.isInitialized = true;
+    console.log('Initializing demo users');
 
     const demoUser: User = {
       id: 'demo-user-1',
@@ -67,18 +68,24 @@ class AuthService {
     };
 
     this.memoryUsers[demoUser.id] = demoUser;
+    console.log('Demo user created:', demoUser.email);
   }
 
   static getUsers(): Record<string, User> {
+    console.log('localStorage available:', this.isLocalStorageAvailable());
     if (!this.isLocalStorageAvailable()) {
       this.initializeDemoUsers();
+      console.log('Using memory users:', Object.keys(this.memoryUsers));
       return this.memoryUsers;
     }
     try {
       const users = localStorage.getItem(this.USERS_KEY);
-      return users ? JSON.parse(users) : {};
+      const parsedUsers = users ? JSON.parse(users) : {};
+      console.log('Using localStorage users:', Object.keys(parsedUsers));
+      return parsedUsers;
     } catch {
       this.initializeDemoUsers();
+      console.log('localStorage error, using memory users:', Object.keys(this.memoryUsers));
       return this.memoryUsers;
     }
   }
@@ -160,17 +167,27 @@ class AuthService {
     this.initializeDemoUsers();
 
     const users = this.getUsers();
-    const user = Object.values(users).find(u => u.email === email);
+    console.log('Available users:', Object.keys(users), Object.values(users).map(u => u.email));
+    console.log('Login attempt:', email, password);
 
-    if (!user) return null;
+    const user = Object.values(users).find(u => u.email === email);
+    console.log('Found user:', user ? user.email : 'NOT FOUND');
+
+    if (!user) {
+      console.log('User not found');
+      return null;
+    }
 
     // Special validation for demo user
     if (email === 'demo@habitflow.com') {
-      return password === 'demo' ? user : null;
+      const isValid = password === 'demo';
+      console.log('Demo login valid:', isValid);
+      return isValid ? user : null;
     }
 
     // En una app real, aquí verificarías el password con hash
     // Por simplicidad, asumimos que el password es correcto para otros usuarios
+    console.log('Regular user login accepted');
     return user;
   }
 

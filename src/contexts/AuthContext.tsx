@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthState, LoginData, RegisterData, UserSession } from '@/types/auth';
+import { User, AuthState, LoginData, RegisterData } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType extends AuthState {
   login: (data: LoginData) => Promise<boolean>;
@@ -12,245 +14,34 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Simulamos una base de datos local con localStorage con fallback para producción
-class AuthService {
-  private static USERS_KEY = 'habitflow_users';
-  private static SESSION_KEY = 'habitflow_session';
-
-  // In-memory fallback for production when localStorage is not available
-  private static memoryUsers: Record<string, User> = {};
-  private static memorySession: UserSession | null = null;
-  private static isInitialized = false;
-
-  // Helper method to check if localStorage is available
-  private static isLocalStorageAvailable(): boolean {
-    try {
-      const test = '__localStorage_test__';
-      localStorage.setItem(test, test);
-      localStorage.removeItem(test);
-      return true;
-    } catch {
-      return false;
+// Helper function to convert Supabase user to our User type
+function supabaseUserToUser(supabaseUser: SupabaseUser, profile?: any): User {
+  return {
+    id: supabaseUser.id,
+    username: profile?.username || supabaseUser.email?.split('@')[0] || 'user',
+    email: supabaseUser.email!,
+    firstName: profile?.first_name || 'Usuario',
+    lastName: profile?.last_name || 'Demo',
+    avatar: supabaseUser.user_metadata?.avatar_url,
+    createdAt: supabaseUser.created_at!,
+    personalGoals: profile?.personal_goals || {
+      dailyHabits: 3,
+      weeklyGoals: [],
+      monthlyTargets: []
+    },
+    preferences: profile?.preferences || {
+      notifications: true,
+      theme: 'system',
+      reminderTime: '09:00',
+      weekStartsOn: 'monday'
+    },
+    stats: profile?.stats || {
+      totalHabitsCreated: 0,
+      longestStreak: 0,
+      totalCompletions: 0,
+      joinDate: supabaseUser.created_at!
     }
-  }
-
-  // Initialize demo users for production
-  private static initializeDemoUsers(): void {
-    if (this.isInitialized) return;
-
-    this.isInitialized = true;
-    console.log('Initializing demo users');
-
-    const demoUser: User = {
-      id: 'demo-user-1',
-      username: 'demo',
-      email: 'demo@habitflow.com',
-      firstName: 'Usuario',
-      lastName: 'Demo',
-      createdAt: new Date().toISOString(),
-      personalGoals: {
-        dailyHabits: 3,
-        weeklyGoals: [],
-        monthlyTargets: []
-      },
-      preferences: {
-        notifications: true,
-        theme: 'system',
-        reminderTime: '09:00',
-        weekStartsOn: 'monday'
-      },
-      stats: {
-        totalHabitsCreated: 0,
-        longestStreak: 0,
-        totalCompletions: 0,
-        joinDate: new Date().toISOString()
-      }
-    };
-
-    this.memoryUsers[demoUser.id] = demoUser;
-    console.log('Demo user created:', demoUser.email);
-  }
-
-  static getUsers(): Record<string, User> {
-    console.log('localStorage available:', this.isLocalStorageAvailable());
-    if (!this.isLocalStorageAvailable()) {
-      this.initializeDemoUsers();
-      console.log('Using memory users:', Object.keys(this.memoryUsers));
-      return this.memoryUsers;
-    }
-    try {
-      const users = localStorage.getItem(this.USERS_KEY);
-      const parsedUsers = users ? JSON.parse(users) : {};
-      console.log('Using localStorage users:', Object.keys(parsedUsers));
-      return parsedUsers;
-    } catch {
-      this.initializeDemoUsers();
-      console.log('localStorage error, using memory users:', Object.keys(this.memoryUsers));
-      return this.memoryUsers;
-    }
-  }
-
-  static saveUsers(users: Record<string, User>): void {
-    // Always update memory storage as fallback
-    this.memoryUsers = users;
-
-    if (this.isLocalStorageAvailable()) {
-      try {
-        localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-      } catch {
-        // Use memory storage as fallback
-      }
-    }
-  }
-
-  static getSession(): UserSession | null {
-    if (!this.isLocalStorageAvailable()) {
-      // Check if session is expired
-      if (this.memorySession && new Date(this.memorySession.expiresAt) < new Date()) {
-        this.memorySession = null;
-      }
-      return this.memorySession;
-    }
-
-    try {
-      const session = localStorage.getItem(this.SESSION_KEY);
-      if (!session) return null;
-
-      const parsedSession = JSON.parse(session);
-      if (new Date(parsedSession.expiresAt) < new Date()) {
-        this.clearSession();
-        return null;
-      }
-
-      return parsedSession;
-    } catch {
-      return this.memorySession;
-    }
-  }
-
-  static saveSession(session: UserSession): void {
-    // Always update memory storage as fallback
-    this.memorySession = session;
-
-    if (this.isLocalStorageAvailable()) {
-      try {
-        localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
-      } catch {
-        // Use memory storage as fallback
-      }
-    }
-  }
-
-  static clearSession(): void {
-    // Clear memory storage
-    this.memorySession = null;
-
-    if (this.isLocalStorageAvailable()) {
-      try {
-        localStorage.removeItem(this.SESSION_KEY);
-      } catch {
-        // Memory already cleared
-      }
-    }
-  }
-
-  static generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
-  }
-
-  static generateToken(): string {
-    return Math.random().toString(36).substr(2, 15);
-  }
-
-  static async login(email: string, password: string): Promise<User | null> {
-    // Always initialize demo users first
-    this.initializeDemoUsers();
-
-    const users = this.getUsers();
-    console.log('Available users:', Object.keys(users), Object.values(users).map(u => u.email));
-    console.log('Login attempt:', email, password);
-
-    const user = Object.values(users).find(u => u.email === email);
-    console.log('Found user:', user ? user.email : 'NOT FOUND');
-
-    if (!user) {
-      console.log('User not found');
-      return null;
-    }
-
-    // Special validation for demo user
-    if (email === 'demo@habitflow.com') {
-      const isValid = password === 'demo';
-      console.log('Demo login valid:', isValid);
-      return isValid ? user : null;
-    }
-
-    // En una app real, aquí verificarías el password con hash
-    // Por simplicidad, asumimos que el password es correcto para otros usuarios
-    console.log('Regular user login accepted');
-    return user;
-  }
-
-  static async register(data: RegisterData): Promise<User | null> {
-    const users = this.getUsers();
-    
-    // Verificar si el usuario ya existe
-    const existingUser = Object.values(users).find(u => 
-      u.email === data.email || u.username === data.username
-    );
-    
-    if (existingUser) return null;
-
-    const newUser: User = {
-      id: this.generateId(),
-      username: data.username,
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      createdAt: new Date().toISOString(),
-      personalGoals: {
-        dailyHabits: 3,
-        weeklyGoals: [],
-        monthlyTargets: []
-      },
-      preferences: {
-        notifications: true,
-        theme: 'system',
-        reminderTime: '09:00',
-        weekStartsOn: 'monday'
-      },
-      stats: {
-        totalHabitsCreated: 0,
-        longestStreak: 0,
-        totalCompletions: 0,
-        joinDate: new Date().toISOString()
-      }
-    };
-
-    users[newUser.id] = newUser;
-    this.saveUsers(users);
-    
-    return newUser;
-  }
-
-  static updateUser(userId: string, updates: Partial<User>): User | null {
-    const users = this.getUsers();
-    const user = users[userId];
-
-    if (!user) return null;
-
-    const updatedUser = { ...user, ...updates };
-    users[userId] = updatedUser;
-    this.saveUsers(users);
-
-    // Actualizar también la sesión
-    const session = this.getSession();
-    if (session && session.user.id === userId) {
-      this.saveSession({ ...session, user: updatedUser });
-    }
-
-    return updatedUser;
-  }
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -259,28 +50,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     isLoading: true
   });
-  
+
   const { toast } = useToast();
 
   useEffect(() => {
-    // Verificar si hay una sesión activa al cargar
-    const session = AuthService.getSession();
-    if (session) {
-      setAuthState({
-        user: session.user,
-        isAuthenticated: true,
-        isLoading: false
-      });
-    } else {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-    }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const user = supabaseUserToUser(session.user);
+        setAuthState({
+          user,
+          isAuthenticated: true,
+          isLoading: false
+        });
+      } else {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const user = supabaseUserToUser(session.user);
+          setAuthState({
+            user,
+            isAuthenticated: true,
+            isLoading: false
+          });
+        } else {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false
+          });
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (data: LoginData): Promise<boolean> => {
     try {
-      const user = await AuthService.login(data.email, data.password);
-      
-      if (!user) {
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
         toast({
           title: "Error de autenticación",
           description: "Email o contraseña incorrectos",
@@ -289,24 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // Crear sesión (expira en 30 días)
-      const session: UserSession = {
-        user,
-        token: AuthService.generateToken(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      };
-
-      AuthService.saveSession(session);
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false
-      });
-
-      toast({
-        title: "¡Bienvenido de vuelta!",
-        description: `Hola ${user.firstName}, que tengas un día productivo.`
-      });
+      if (authData.user) {
+        const user = supabaseUserToUser(authData.user);
+        toast({
+          title: "¡Bienvenido de vuelta!",
+          description: `Hola ${user.firstName}, que tengas un día productivo.`
+        });
+      }
 
       return true;
     } catch (error) {
@@ -330,35 +137,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const user = await AuthService.register(data);
-      
-      if (!user) {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            username: data.username,
+            first_name: data.firstName,
+            last_name: data.lastName,
+          }
+        }
+      });
+
+      if (error) {
         toast({
           title: "Error",
-          description: "El usuario o email ya existe",
+          description: error.message,
           variant: "destructive"
         });
         return false;
       }
 
-      // Crear sesión automáticamente después del registro
-      const session: UserSession = {
-        user,
-        token: AuthService.generateToken(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      };
-
-      AuthService.saveSession(session);
-      setAuthState({
-        user,
-        isAuthenticated: true,
-        isLoading: false
-      });
-
-      toast({
-        title: "¡Cuenta creada!",
-        description: `Bienvenido ${user.firstName}, tu cuenta ha sido creada exitosamente.`
-      });
+      if (authData.user) {
+        toast({
+          title: "¡Cuenta creada!",
+          description: `Bienvenido ${data.firstName}, revisa tu email para confirmar tu cuenta.`
+        });
+      }
 
       return true;
     } catch (error) {
@@ -371,30 +176,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    AuthService.clearSession();
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false
-    });
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
 
-    toast({
-      title: "Sesión cerrada",
-      description: "Hasta la próxima, sigue construyendo buenos hábitos."
-    });
+    if (!error) {
+      toast({
+        title: "Sesión cerrada",
+        description: "Hasta la próxima, sigue construyendo buenos hábitos."
+      });
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {
+    // This will be handled by Supabase profiles table in the future
     if (!authState.user) return;
-    
-    const updatedUser = AuthService.updateUser(authState.user.id, updates);
-    if (updatedUser) {
-      setAuthState(prev => ({
-        ...prev,
-        user: updatedUser
-      }));
-    }
+
+    setAuthState(prev => ({
+      ...prev,
+      user: prev.user ? { ...prev.user, ...updates } : null
+    }));
   };
 
   const getCurrentUserId = (): string | null => {

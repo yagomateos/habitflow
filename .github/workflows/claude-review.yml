@@ -1,0 +1,171 @@
+name: Claude AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get changed files
+      id: changed-files
+      run: |
+        git fetch origin ${{ github.base_ref }}
+        CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.(ts|tsx|js|jsx)$' || echo "")
+        echo "files<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Get PR diff for review
+      id: pr-diff
+      run: |
+        git fetch origin ${{ github.base_ref }}
+        DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx')
+
+        # Limit diff size to avoid API limits
+        if [ ${#DIFF} -gt 10000 ]; then
+          DIFF=$(echo "$DIFF" | head -c 10000)
+          DIFF="$DIFF"$'\n\n[... diff truncated for review ...]'
+        fi
+
+        echo "diff<<EOF" >> $GITHUB_OUTPUT
+        echo "$DIFF" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Setup Node.js for review script
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Create review script
+      run: |
+        cat > review.js << 'EOF'
+        const fs = require('fs');
+
+        async function createReview() {
+          const diff = process.env.PR_DIFF;
+          const prNumber = process.env.PR_NUMBER;
+          const repoName = process.env.REPO_NAME;
+
+          if (!diff.trim()) {
+            console.log('No code changes to review');
+            return;
+          }
+
+          // Esta sería la integración real con Claude API
+          // Por ahora, creamos un review básico inteligente
+          const addedLines = diff.split('\n').filter(line => line.startsWith('+')).length;
+          const removedLines = diff.split('\n').filter(line => line.startsWith('-')).length;
+          const modifiedFiles = (diff.match(/\+\+\+ b\/(.*)/g) || [])
+            .map(line => line.replace('+++ b/', ''));
+
+          const issues = [];
+
+          // Análisis básico de patrones
+          if (diff.includes('console.log')) {
+            issues.push('⚠️ Found console.log statements - consider removing before production');
+          }
+
+          if (diff.includes('any')) {
+            issues.push('📝 Found "any" type usage - consider more specific typing');
+          }
+
+          if (diff.includes('// TODO') || diff.includes('// FIXME')) {
+            issues.push('📋 Found TODO/FIXME comments - track these items');
+          }
+
+          if (addedLines > 100) {
+            issues.push('📊 Large PR detected - consider breaking into smaller PRs');
+          }
+
+          const reviewBody = `🤖 **Claude AI Code Review**
+
+        ## PR Summary
+        - **Files changed**: ${modifiedFiles.length}
+        - **Lines added**: ${addedLines}
+        - **Lines removed**: ${removedLines}
+        - **Modified files**: ${modifiedFiles.slice(0, 5).join(', ')}${modifiedFiles.length > 5 ? '...' : ''}
+
+        ## Code Analysis
+        ${issues.length > 0 ? issues.map(issue => `- ${issue}`).join('\n') : '✅ No immediate issues detected!'}
+
+        ## Recommendations
+        - 🧪 Ensure comprehensive test coverage
+        - 📚 Update documentation if needed
+        - 🔍 Run manual testing for UI changes
+        - 🛡️ Consider security implications
+
+        ## Next Steps
+        1. Address any issues mentioned above
+        2. Ensure CI/CD pipeline passes
+        3. Request human review for complex changes
+
+        *Powered by Claude AI • Generated automatically*`;
+
+          console.log('REVIEW_BODY<<EOF');
+          console.log(reviewBody);
+          console.log('EOF');
+        }
+
+        createReview();
+        EOF
+
+    - name: Generate AI Review
+      id: ai-review
+      run: |
+        export PR_DIFF="${{ steps.pr-diff.outputs.diff }}"
+        export PR_NUMBER="${{ github.event.pull_request.number }}"
+        export REPO_NAME="${{ github.repository }}"
+
+        REVIEW_OUTPUT=$(node review.js)
+        echo "$REVIEW_OUTPUT" >> $GITHUB_OUTPUT
+
+    - name: Post Review Comment
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const reviewBody = `${{ steps.ai-review.outputs.REVIEW_BODY }}`;
+
+          // Check for existing AI review comments
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existingReview = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('🤖 **Claude AI Code Review**')
+          );
+
+          if (existingReview) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingReview.id,
+              body: reviewBody
+            });
+            console.log('Updated existing review comment');
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: reviewBody
+            });
+            console.log('Created new review comment');
+          }

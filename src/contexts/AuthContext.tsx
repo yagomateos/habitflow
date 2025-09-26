@@ -223,25 +223,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       description: `¡Bienvenido ${data.firstName}! Ya estás dentro de la aplicación.`
     });
 
-    // Intentar registrar en Supabase en segundo plano (opcional)
-    try {
-      await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            username: data.username,
-            first_name: data.firstName,
-            last_name: data.lastName,
-          }
-        }
-      });
-    } catch (error) {
-      // No importa si falla, el usuario ya está logueado
-      if (import.meta.env.DEV) {
-        console.log('Supabase register failed (but user is already in):', error);
-      }
-    }
+    // Supabase registration COMPLETAMENTE DESHABILITADO para evitar emails y redirects
+    // El usuario entra inmediatamente sin esperar confirmación
 
     return true;
   };

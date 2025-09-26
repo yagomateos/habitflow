@@ -119,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return true;
     } catch (error) {
-      console.error('Error en login Supabase:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error en login Supabase:', error);
+      }
 
       // Fallback: verificar si es usuario demo
       if (data.email === 'demo@habitflow.com' && data.password === 'demo') {
@@ -196,12 +198,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      // Log para debugging
-      console.log('Registro Supabase:', {
-        user: authData.user?.email,
-        confirmed: authData.user?.email_confirmed_at,
-        error: error?.message
-      });
+      // Log para debugging (solo en desarrollo)
+      if (import.meta.env.DEV) {
+        console.log('Registro Supabase:', {
+          user: authData.user?.email,
+          confirmed: authData.user?.email_confirmed_at,
+          error: error?.message
+        });
+      }
 
       if (error) {
         toast({
@@ -229,7 +233,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return true;
     } catch (error) {
-      console.error('Error en registro Supabase:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error en registro Supabase:', error);
+      }
 
       // Fallback: crear usuario localmente si Supabase falla
       try {

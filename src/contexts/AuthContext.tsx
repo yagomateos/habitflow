@@ -143,13 +143,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}`,
           data: {
             username: data.username,
             first_name: data.firstName,
             last_name: data.lastName,
           }
         }
+      });
+
+      // Log para debugging
+      console.log('Registro Supabase:', {
+        user: authData.user?.email,
+        confirmed: authData.user?.email_confirmed_at,
+        error: error?.message
       });
 
       if (error) {
@@ -161,10 +168,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      if (authData.user) {
+      if (authData.user && !authData.user.email_confirmed_at) {
         toast({
           title: "¡Cuenta creada!",
           description: `Bienvenido ${data.firstName}, revisa tu email para confirmar tu cuenta.`
+        });
+      } else if (authData.user && authData.user.email_confirmed_at) {
+        toast({
+          title: "¡Cuenta creada y confirmada!",
+          description: `Bienvenido ${data.firstName}, ya puedes usar tu cuenta.`
         });
       }
 
